@@ -2,3 +2,4 @@ gdown
 scikit-learn==1.2.2
 numpy
 pandas
+io
