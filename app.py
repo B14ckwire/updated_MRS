@@ -2,6 +2,61 @@ import pickle
 import streamlit as st
 import requests
 import pandas as pd
+from streamlit.components.v1 import html
+
+
+# Custom CSS for better movie card styling
+def inject_custom_css():
+    st.markdown("""
+    <style>
+    .movie-card {
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px;
+        background: #1a1a1a;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transition: transform 0.3s ease;
+        height: 100%;
+    }
+    .movie-card:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+.movie-poster {
+    width: 100%;
+    height: 260px;
+    object-fit: contain; /* Or 'scale-down' if you want the original size inside the box */
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: block;
+    background-color: #000; /* In case there's empty space around */
+}
+
+
+    .movie-title {
+        font-weight: bold;
+        color: white;
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 5px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .recommendations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 10px;
+    }
+    @media (max-width: 600px) {
+        .recommendations-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 # Function to fetch movie poster (only for Hollywood)
@@ -22,7 +77,7 @@ def fetch_poster(movie_id, industry):
         return None
 
 
-# Function to recommend movies
+# Function to recommend movies (unchanged)
 def recommend(movie, similarity_data, category_type, movies_df, industry):
     recommended_movies = []
 
@@ -76,10 +131,13 @@ def recommend(movie, similarity_data, category_type, movies_df, industry):
 
 
 # Streamlit UI
+st.set_page_config(layout="wide")  # Use wider layout
+inject_custom_css()  # Inject our custom CSS
+
 st.header('Konsa Movie Dekhoge? 🎬')
 
 # Add toggle for Hollywood/Bollywood
-movie_industry = st.radio("Select Movie Industry:", ('Hollywood', 'Bollywood'))
+movie_industry = st.radio("Select Movie Industry:", ('Hollywood', 'Bollywood'), horizontal=True)
 
 # Load appropriate data based on selection
 if movie_industry == 'Hollywood':
@@ -97,11 +155,10 @@ else:
     similarity_files = {
         'Genre-based': 'similarity2 (1).pkl',
         'Stars-based': 'similarity1 (1).pkl',
-
     }
 
 # Category selection
-category = st.radio("Select Recommendation Category:", categories)
+category = st.radio("Select Recommendation Category:", categories, horizontal=True)
 
 # Load similarity matrix (for all categories in both industries)
 similarity = pickle.load(open(similarity_files[category], 'rb'))
@@ -120,26 +177,26 @@ if st.button('Show Recommendation'):
     if not recommendations:
         st.warning("No recommendations found. Try a different movie or category.")
     elif movie_industry == 'Hollywood':
-        # Display Hollywood movies with posters
-        cols = st.columns(5)
-        for i in range(5):
-            with cols[i]:
-                st.text(recommendations[i]['title'])
-                if recommendations[i]['poster']:
-                    st.image(recommendations[i]['poster'])
-                else:
-                    st.text("No poster available")
+        # Display Hollywood movies with posters in a responsive grid
+        st.markdown(f"<h3 style='text-align: center;'>Recommended Movies Similar to '{selected_movie}'</h3>",
+                    unsafe_allow_html=True)
 
-        cols = st.columns(5)
-        for i in range(5, 10):
-            with cols[i - 5]:
-                st.text(recommendations[i]['title'])
-                if recommendations[i]['poster']:
-                    st.image(recommendations[i]['poster'])
-                else:
-                    st.text("No poster available")
+        # Create a grid layout
+        st.markdown('<div class="recommendations-grid">', unsafe_allow_html=True)
+
+        for movie in recommendations[:10]:
+            poster = movie['poster'] if movie[
+                'poster'] else "https://via.placeholder.com/500x750?text=Poster+Not+Available"
+            st.markdown(f"""
+            <div class="movie-card">
+                <img src="{poster}" class="movie-poster" onerror="this.src='https://via.placeholder.com/500x750?text=Poster+Not+Available'">
+                <div class="movie-title">{movie['title']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
         # Display Bollywood movies as a list
-        st.subheader("Recommended Bollywood Movies:")
+        st.subheader(f"Recommended Bollywood Movies Similar to '{selected_movie}':")
         for i, movie in enumerate(recommendations[:10], 1):
             st.write(f"{i}. {movie['title']}")
